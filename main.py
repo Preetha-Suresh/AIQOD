@@ -2,6 +2,7 @@ import re
 import whisper
 from transformers import pipeline
 import subprocess
+import csv  
 
 # Initialize Whisper model for transcription
 model = whisper.load_model("base")
@@ -31,7 +32,6 @@ def summarize_transcript(transcript, chunk_size=1000):
     return full_summary
 
 
-# Extract tasks from the summary
 def extract_tasks(transcript):
     task_patterns = [
         re.compile(r'(\w+) will (\w+ .*?)\.', re.IGNORECASE),
@@ -43,24 +43,37 @@ def extract_tasks(transcript):
     for pattern in task_patterns:
         tasks.extend(pattern.findall(transcript))
 
-    return tasks
+    return tasks  # Returns a list of tuples (Name, Task)
+
+
+def save_tasks_to_csv(task_list, filename="tasks.csv"):
+    if not task_list:
+        print("No tasks to save.")
+        return
+
+    with open(filename, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Assigned To", "Task"])  # Column Headers
+
+        for name, task in task_list:
+            writer.writerow([name, task])  # Write each task
+
+    print(f"✅ Tasks saved to {filename}")
+
 
 # Main function to run the full pipeline
 def main(video_file):
     audio_file = "audio.wav"
     
-    # Extract audio using ffmpeg
+    # Extract audio from video
     command = ["ffmpeg", "-i", video_file, "-q:a", "0", "-map", "a", audio_file, "-y"]
     subprocess.run(command, check=True)
     
     # Transcribe and summarize
     transcript = transcribe_audio(audio_file)
-    print("\nMeeting Transcript:")
-    print(transcript)
-    
+    print("\\nn Meeting Transcript : \n", transcript)
     summary = summarize_transcript(transcript)
-    print("\nMeeting Summary:")
-    print(summary)
+    print("\n\n Summary of the Meeting : \n", summary)
     
     # Extract tasks
     task_list = extract_tasks(summary)
@@ -72,7 +85,10 @@ def main(video_file):
     else:
         print("No tasks assigned.")
 
+    # Save tasks to CSV
+    save_tasks_to_csv(task_list)
+
+
 # Example video file
 video_file = r"C:\\Users\Sahi\Downloads\Annual General Meeting FY 2019-20.mp4"
 main(video_file)
-
